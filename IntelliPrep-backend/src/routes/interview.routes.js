@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth.middleware");
+const { generateATSQuestions } = require("../controllers/interview.controller");
 
 router.get("/health", (req,res)=>{
     res.json({status: "OK", message: "Interview route working fine"});
@@ -13,6 +14,8 @@ router.get("/start", auth, (req, res) => {
     userId: req.userId
   });
 });
+
+router.post("/ats-questions", auth, generateATSQuestions);
 
 
 module.exports = router;

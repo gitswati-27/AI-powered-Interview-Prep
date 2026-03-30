@@ -1,14 +1,28 @@
 const pool = require("../config/db");
+const pdfParse = require("pdf-parse");
 
 exports.checkATS = async (req, res) => {
   try {
-    const { resumeText, jobDescription, resumeUrl } = req.body;
+    const { jobDescription } = req.body;
 
-    if (!resumeText || !jobDescription) {
+    // ✅ Check file exists
+    if (!req.file) {
       return res.status(400).json({
-        message: "Resume text and job description are required"
+        message: "Resume file is required"
       });
     }
+
+    if (!jobDescription) {
+      return res.status(400).json({
+        message: "Job description is required"
+      });
+    }
+
+    // 🧠 Extract text from PDF
+    const pdfData = await pdfParse(req.file.buffer);
+    const resumeText = pdfData.text;
+
+    console.log("Extracted resume length:", resumeText.length);
 
     const prompt = `
 You are an ATS engine.
@@ -53,10 +67,8 @@ ${jobDescription.slice(0, 4000)}
 
     const data = await response.json();
 
-    // 🔍 Debug log (you can remove later)
     console.log("Groq raw response:", JSON.stringify(data, null, 2));
 
-    // 🛡️ Defensive checks
     if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
       throw new Error("Groq returned no choices");
     }
@@ -67,7 +79,6 @@ ${jobDescription.slice(0, 4000)}
       throw new Error("Groq returned empty message");
     }
 
-    // 🧠 Extract JSON safely
     const jsonMatch = message.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("No JSON object found in LLM response");
@@ -75,15 +86,13 @@ ${jobDescription.slice(0, 4000)}
 
     const atsResult = JSON.parse(jsonMatch[0]);
 
-    // ✅ ATS SCORE NORMALIZATION (IMPORTANT PART)
+    // ✅ Normalize ATS score
     let atsScore = atsResult.atsScore;
 
-    // If model returns 0–1 scale, convert to 0–100
     if (typeof atsScore === "number" && atsScore <= 1) {
       atsScore = Math.round(atsScore * 100);
     }
 
-    // Clamp score just to be safe
     atsScore = Math.max(0, Math.min(100, atsScore));
 
     // 💾 Save to DB
@@ -91,9 +100,10 @@ ${jobDescription.slice(0, 4000)}
       `INSERT INTO ats_results
        (user_id, resume_url, ats_score, matched_keywords, missing_keywords, feedback)
        VALUES ($1, $2, $3, $4, $5, $6)`,
+
       [
         req.userId,
-        resumeUrl || "",
+        "", // resumeUrl optional for now
         atsScore,
         atsResult.matchedKeywords,
         atsResult.missingKeywords,
@@ -101,7 +111,6 @@ ${jobDescription.slice(0, 4000)}
       ]
     );
 
-    // 📤 Return normalized result to frontend
     res.json({
       atsScore,
       matchedKeywords: atsResult.matchedKeywords,
