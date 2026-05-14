@@ -14,6 +14,7 @@ const resumeRoutes = require("./routes/resume.routes");
 const atsRoutes = require("./routes/ats.routes");
 const analyticsRoutes = require("./routes/analytics.routes");
 const mockInterviewRoutes = require("./routes/mockInterview.routes");
+const questionRoutes = require("./routes/question.routes");
 
 
 app.use(express.json());
@@ -23,6 +24,7 @@ app.use("/api/resume", resumeRoutes);
 app.use("/api/ats", atsRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/mock-interview", mockInterviewRoutes);
+app.use("/api/questions", questionRoutes);
 
 app.get("/", (req,res)=>{
     res.send("Backend working fine");

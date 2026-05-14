@@ -52,8 +52,11 @@ function Dashboard() {
             <button onClick={() => navigate("/ats")}>
                 Upload Resume
             </button>
-            <button>
+            <button onClick={() => navigate("/interview")}>
               Start Interview
+            </button>
+            <button onClick={() => navigate("/results")} style={{ marginLeft: "10px" }}>
+              View Results
             </button>
           </div>
         </div>
