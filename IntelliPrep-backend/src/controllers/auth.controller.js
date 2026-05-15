@@ -64,7 +64,7 @@ exports.login = async (req, res) => {
 
     //generate token
     const token = jwt.sign(
-      { userId: user.id },
+      { id: user.id },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -76,5 +76,32 @@ exports.login = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getProfile = async (req, res) => {
+  try {
+
+    const result = await pool.query(
+      `SELECT id, name, email
+       FROM users
+       WHERE id = $1`,
+      [req.userId]
+    );
+
+    res.json({
+      user: result.rows[0]
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Fetch profile error:",
+      error.message
+    );
+
+    res.status(500).json({
+      message: "Failed to fetch profile"
+    });
   }
 };
