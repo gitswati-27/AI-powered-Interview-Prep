@@ -5,7 +5,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:3001",
-    "https://prep-with-prepwise.vercel.app/"
+    "https://prep-with-prepwise.vercel.app"
   ],
   credentials: true
 }));
