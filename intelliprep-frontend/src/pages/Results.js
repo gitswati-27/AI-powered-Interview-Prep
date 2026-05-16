@@ -15,7 +15,7 @@ function Results() {
         localStorage.getItem("token");
 
       const response = await fetch(
-        "http://localhost:3000/api/mock-interview/results",
+        `${process.env.REACT_APP_API_URL}/api/mock-interview/results`,
         {
           headers: {
             Authorization: `Bearer ${token}`

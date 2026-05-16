@@ -26,6 +26,7 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/mock-interview", mockInterviewRoutes);
 app.use("/api/questions", questionRoutes);
 
+
 app.get("/", (req,res)=>{
     res.send("Backend working fine");
 });

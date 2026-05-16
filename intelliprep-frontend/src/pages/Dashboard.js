@@ -21,7 +21,7 @@ export default function Dashboard() {
 
       // 📊 ATS analytics
       const analyticsResponse = await fetch(
-        "http://localhost:3000/api/analytics/ats",
+        `${process.env.REACT_APP_API_URL}/api/analytics/ats`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -34,7 +34,7 @@ export default function Dashboard() {
 
       // 🎙️ Interview summary
       const resultsResponse = await fetch(
-        "http://localhost:3000/api/mock-interview/results",
+        `${process.env.REACT_APP_API_URL}/api/mock-interview/results`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -47,7 +47,7 @@ export default function Dashboard() {
 
       // 👤 User profile
       const profileResponse = await fetch(
-        "http://localhost:3000/api/auth/profile",
+        `${process.env.REACT_APP_API_URL}/api/auth/profile`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -57,8 +57,6 @@ export default function Dashboard() {
 
       const profileData =
         await profileResponse.json();
-      console.log("PROFILE DATA:", profileData);
-      console.log("USER STATE:", user);
       setAnalytics(analyticsData);
       setSummary(resultsData.summary || null);
       setUser(profileData);
@@ -138,7 +136,7 @@ export default function Dashboard() {
 
         <div>
           <h1 className="text-4xl font-bold mb-2">
-            Welcome back, {user?.name || "User"} 👋
+            Welcome back, {user?.user?.name || "User"} 👋
           </h1>
 
           <p className="text-slate-400 text-lg">

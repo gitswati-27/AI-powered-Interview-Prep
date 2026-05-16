@@ -9,7 +9,7 @@ function Signup() {
 
   const handleSignup = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/auth/register", {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

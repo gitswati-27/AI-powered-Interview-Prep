@@ -23,7 +23,7 @@ function Interview() {
 
       // 1️⃣ Create interview session
       const interviewResponse = await fetch(
-        "http://localhost:3000/api/mock-interview/start",
+        `${process.env.REACT_APP_API_URL}/api/mock-interview/start`,
         {
           method: "POST",
           headers: {
@@ -40,7 +40,7 @@ function Interview() {
 
       // 2️⃣ Generate questions
      const questionResponse = await fetch(
-        "http://localhost:3000/api/questions/generate",
+        `${process.env.REACT_APP_API_URL}/api/questions/generate`,
         {
             method: "POST",
             headers: {
@@ -109,7 +109,7 @@ function Interview() {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        "http://localhost:3000/api/mock-interview/answer",
+        `${process.env.REACT_APP_API_URL}/api/mock-interview/answer`,
         {
           method: "POST",
           headers: {

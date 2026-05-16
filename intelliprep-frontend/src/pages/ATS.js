@@ -14,7 +14,7 @@ function ATS() {
       formData.append("jobDescription", jobDescription);
 
       const response = await fetch(
-        "http://localhost:3000/api/ats/check",
+        `${process.env.REACT_APP_API_URL}/api/ats/check`,
         {
           method: "POST",
           headers: {
