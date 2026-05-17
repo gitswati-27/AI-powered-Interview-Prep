@@ -73,7 +73,13 @@ User → React Frontend → Express Backend → PostgreSQL + Groq AI API
 ---
 
 # Screenshots
-
+![Login](README-assets/login.png)
+![Dashboard](README-assets/dashboard.png)
+![ATS Resume Analyzer](README-assets/ATS.png)
+![ATS Result](README-assets/ATS2.png)
+![Mock Interview](README-assets/interview.png)
+![Mock Interview Result](README-assets/interview2.png)
+![Interview Results](README-assets/results.png)
 
 ---
 
