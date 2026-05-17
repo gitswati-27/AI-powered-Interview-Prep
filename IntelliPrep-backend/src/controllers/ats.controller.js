@@ -2,127 +2,339 @@ const pool = require("../config/db");
 const pdfParse = require("pdf-parse");
 
 exports.checkATS = async (req, res) => {
+
   try {
+
     const { jobDescription } = req.body;
 
     // ✅ Check file exists
     if (!req.file) {
+
       return res.status(400).json({
         message: "Resume file is required"
       });
     }
 
     if (!jobDescription) {
+
       return res.status(400).json({
         message: "Job description is required"
       });
     }
 
-    // 🧠 Extract text from PDF
-    const pdfData = await pdfParse(req.file.buffer);
-    const resumeText = pdfData.text;
+    // =========================================
+    // 📄 Extract resume text
+    // =========================================
 
-    console.log("Extracted resume length:", resumeText.length);
+    const pdfData =
+      await pdfParse(req.file.buffer);
 
-    const prompt = `
-You are an ATS engine.
+    const resumeText =
+      pdfData.text;
 
-IMPORTANT RULES:
-- Respond with ONLY raw JSON
-- Do NOT include explanations
-- Do NOT include markdown
-- Do NOT include any text outside JSON
-- If input is valid, ALWAYS return JSON
+    console.log(
+      "Extracted resume length:",
+      resumeText.length
+    );
 
-Required JSON format:
+    // =========================================
+    // 🧠 STEP 1:
+    // Extract technical keywords
+    // =========================================
+
+    const keywordPrompt = `
+Extract ONLY technical skills,
+frameworks,
+programming languages,
+databases,
+cloud tools,
+platforms,
+libraries,
+and technologies
+from this job description.
+
+IMPORTANT:
+- Ignore normal English words
+- Ignore soft skills
+- Ignore filler words
+- Return ONLY technical keywords
+
+Return ONLY raw JSON:
+
 {
-  "atsScore": number,
-  "matchedKeywords": [string],
-  "missingKeywords": [string],
-  "feedback": string
+  "keywords": [string]
 }
-
-RESUME TEXT:
-${resumeText.slice(0, 6000)}
 
 JOB DESCRIPTION:
 ${jobDescription.slice(0, 4000)}
 `;
 
-    const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.2
-        })
-      }
+    const keywordResponse =
+      await fetch(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          method: "POST",
+
+          headers: {
+            "Authorization":
+              `Bearer ${process.env.GROQ_API_KEY}`,
+
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            model:
+              "llama-3.1-8b-instant",
+
+            messages: [
+              {
+                role: "user",
+                content: keywordPrompt
+              }
+            ],
+
+            temperature: 0.1
+          })
+        }
+      );
+
+    const keywordData =
+      await keywordResponse.json();
+
+    const keywordMessage =
+      keywordData.choices?.[0]
+        ?.message?.content;
+
+    if (!keywordMessage) {
+
+      throw new Error(
+        "Keyword extraction failed"
+      );
+    }
+
+    const keywordMatch =
+      keywordMessage.match(/\{[\s\S]*\}/);
+
+    if (!keywordMatch) {
+
+      throw new Error(
+        "No keyword JSON found"
+      );
+    }
+
+    const parsedKeywords =
+      JSON.parse(keywordMatch[0]);
+
+    const extractedKeywords =
+      parsedKeywords.keywords || [];
+
+    console.log(
+      "Extracted Keywords:",
+      extractedKeywords
     );
 
-    const data = await response.json();
+    // =========================================
+    // ✅ STEP 2:
+    // Deterministic ATS scoring
+    // =========================================
 
-    console.log("Groq raw response:", JSON.stringify(data, null, 2));
+    const cleanResume =
+      resumeText.toLowerCase();
 
-    if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
-      throw new Error("Groq returned no choices");
+    const uniqueKeywords =
+      [...new Set(extractedKeywords)]
+        .map(skill =>
+          skill.toLowerCase()
+        );
+
+    // Matched
+    const matchedKeywords =
+      uniqueKeywords.filter(skill =>
+        cleanResume.includes(skill)
+      );
+
+    // Missing
+    const missingKeywords =
+      uniqueKeywords.filter(skill =>
+        !cleanResume.includes(skill)
+      );
+
+    // Real ATS score
+    let atsScore = Math.round(
+      (
+        matchedKeywords.length /
+        uniqueKeywords.length
+      ) * 100
+    );
+
+    if (isNaN(atsScore)) {
+      atsScore = 0;
     }
 
-    const message = data.choices[0]?.message?.content;
+    atsScore = Math.max(
+      0,
+      Math.min(100, atsScore)
+    );
 
-    if (!message) {
-      throw new Error("Groq returned empty message");
+    console.log(
+      "FINAL SCORE:",
+      atsScore
+    );
+
+    // =========================================
+    // 🧠 STEP 3:
+    // AI Feedback
+    // =========================================
+
+    const feedbackPrompt = `
+You are an ATS evaluator.
+
+Provide professional ATS feedback
+for this resume based on:
+
+- matched skills
+- missing skills
+- overall alignment
+
+Keep feedback concise,
+helpful,
+and realistic.
+
+Return ONLY raw JSON:
+
+{
+  "feedback": string
+}
+
+MATCHED KEYWORDS:
+${matchedKeywords.join(", ")}
+
+MISSING KEYWORDS:
+${missingKeywords.join(", ")}
+
+ATS SCORE:
+${atsScore}
+`;
+
+    const feedbackResponse =
+      await fetch(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          method: "POST",
+
+          headers: {
+            "Authorization":
+              `Bearer ${process.env.GROQ_API_KEY}`,
+
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            model:
+              "llama-3.1-8b-instant",
+
+            messages: [
+              {
+                role: "user",
+                content: feedbackPrompt
+              }
+            ],
+
+            temperature: 0.3
+          })
+        }
+      );
+
+    const feedbackData =
+      await feedbackResponse.json();
+
+    const feedbackMessage =
+      feedbackData.choices?.[0]
+        ?.message?.content;
+
+    if (!feedbackMessage) {
+
+      throw new Error(
+        "Feedback generation failed"
+      );
     }
 
-    const jsonMatch = message.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No JSON object found in LLM response");
+    const feedbackMatch =
+      feedbackMessage.match(/\{[\s\S]*\}/);
+
+    if (!feedbackMatch) {
+
+      throw new Error(
+        "No feedback JSON found"
+      );
     }
 
-    const atsResult = JSON.parse(jsonMatch[0]);
+    const feedbackResult =
+      JSON.parse(feedbackMatch[0]);
 
-    // ✅ Normalize ATS score
-    let atsScore = atsResult.atsScore;
-
-    if (typeof atsScore === "number" && atsScore <= 1) {
-      atsScore = Math.round(atsScore * 100);
-    }
-
-    atsScore = Math.max(0, Math.min(100, atsScore));
-
+    // =========================================
     // 💾 Save to DB
+    // =========================================
+
     await pool.query(
       `INSERT INTO ats_results
-       (user_id, resume_url, ats_score, matched_keywords, missing_keywords, feedback)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      (
+        user_id,
+        resume_url,
+        ats_score,
+        matched_keywords,
+        missing_keywords,
+        feedback
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)`,
 
       [
         req.userId,
-        "", // resumeUrl optional for now
+
+        "",
+
         atsScore,
-        atsResult.matchedKeywords,
-        atsResult.missingKeywords,
-        atsResult.feedback
+
+        matchedKeywords,
+
+        missingKeywords,
+
+        feedbackResult.feedback
       ]
     );
 
+    // =========================================
+    // 📤 Response
+    // =========================================
+
     res.json({
+
       atsScore,
-      matchedKeywords: atsResult.matchedKeywords,
-      missingKeywords: atsResult.missingKeywords,
-      feedback: atsResult.feedback
+
+      matchedKeywords,
+
+      missingKeywords,
+
+      feedback:
+        feedbackResult.feedback
     });
 
   } catch (error) {
-    console.error("ATS Groq error:", error.message);
+
+    console.error(
+      "ATS Groq error:",
+      error.message
+    );
+
     res.status(500).json({
-      message: "ATS evaluation failed",
-      error: error.message
+
+      message:
+        "ATS evaluation failed",
+
+      error:
+        error.message
     });
   }
 };
