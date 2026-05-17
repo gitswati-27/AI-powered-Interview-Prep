@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  FiFileText,
+  FiBarChart2,
+  FiTrendingUp,
+  FiActivity
+} from "react-icons/fi";
 
 export default function Dashboard() {
 
@@ -78,24 +84,24 @@ export default function Dashboard() {
     {
       title: "Latest ATS Score",
       value: analytics?.latestScore || "N/A",
-      icon: "📄"
+      icon: <FiFileText />
     },
     {
       title: "ATS Checks",
       value: analytics?.totalChecks || 0,
-      icon: "📊"
+      icon: <FiBarChart2 />
     },
     {
       title: "Readiness Level",
       value: summary?.readinessLevel || "N/A",
-      icon: "🚀"
+      icon: <FiTrendingUp />
     },
     {
       title: "Avg Confidence",
       value: summary
         ? `${summary.avgConfidence}/10`
         : "N/A",
-      icon: "🧠"
+      icon: <FiActivity />
     }
   ];
 
@@ -160,8 +166,8 @@ export default function Dashboard() {
             className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl hover:scale-[1.02] transition-all duration-300"
           >
 
-            <div className="text-3xl mb-4">
-              {item.icon}
+            <div className="text-3xl mb-4 text-indigo-400">
+                {item.icon}
             </div>
 
             <p className="text-slate-400 text-sm mb-1">
@@ -298,7 +304,7 @@ export default function Dashboard() {
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl">
 
           <h2 className="text-2xl font-bold mb-6">
-            Quick Actions ⚡
+            Quick Actions:
           </h2>
 
           <div className="space-y-5">
