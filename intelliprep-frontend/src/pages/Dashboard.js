@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, NavLink } from "react-router-dom";
+import { useNavigate} from "react-router-dom";
 import { FiFileText, FiBarChart2, FiTrendingUp, FiActivity, FiArrowRight, FiMic } from "react-icons/fi";
 import { appStyles } from "./appStyles";
 

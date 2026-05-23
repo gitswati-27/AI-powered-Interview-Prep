@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { FiFileText, FiMic, FiBarChart2, FiArrowRight, FiChevronRight } from "react-icons/fi";
-import { useEffect, useRef } from "react";
+//import { useEffect, useRef } from "react";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');

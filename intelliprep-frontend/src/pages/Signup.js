@@ -349,7 +349,7 @@ function Signup() {
 
             <p className="pw-auth-terms">
               By signing up, you agree to our{" "}
-              <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+              <a>Terms of Service</a> and <a>Privacy Policy</a>.
             </p>
 
             <p className="pw-auth-footer-text">
