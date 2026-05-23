@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import ATS from "./pages/ATS";
 import Interview from "./pages/Interview";
 import Results from "./pages/Results";
+import Landing from "./pages/Landing";
 
 
 function App() {
@@ -14,7 +15,8 @@ function App() {
     <Toaster position="top-right" reverseOrder={false}/>
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/ats" element={<ATS />} />

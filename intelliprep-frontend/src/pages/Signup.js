@@ -67,7 +67,7 @@ function Signup() {
       toast.success("Please login!");
 
       setTimeout(() => {
-        navigate("/");
+        navigate("/login");
       }, 1500);
 
     } catch (error) {
@@ -188,7 +188,7 @@ function Signup() {
           Already have an account?{" "}
 
           <Link
-            to="/"
+            to="/login"
             className="text-indigo-300 hover:text-indigo-200 font-semibold"
           >
             Login
