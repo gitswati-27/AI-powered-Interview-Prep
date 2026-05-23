@@ -1,288 +1,231 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import { FiArrowRight, FiUpload, FiX, FiCheck } from "react-icons/fi";
+import { appStyles } from "./appStyles";
 
 function ATS() {
-
+  const navigate = useNavigate();
   const [file, setFile] = useState(null);
-
-  const [jobDescription,
-    setJobDescription] = useState("");
-
-  const [result, setResult] =
-    useState(null);
-
-  const [loading, setLoading] =
-    useState(false);
+  const [jobDescription, setJobDescription] = useState("");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const handleCheckATS = async () => {
-
     try {
-
       setLoading(true);
-
-      const token =
-        localStorage.getItem("token");
-
+      const token = localStorage.getItem("token");
       const formData = new FormData();
-
       formData.append("resume", file);
+      formData.append("jobDescription", jobDescription);
 
-      formData.append(
-        "jobDescription",
-        jobDescription
-      );
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/ats/check`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
 
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/ats/check`,
-        {
-          method: "POST",
-
-          headers: {
-            Authorization:
-              `Bearer ${token}`
-          },
-
-          body: formData
-        }
-      );
-
-      const data =
-        await response.json();
-
+      const data = await response.json();
       setResult(data);
-
-      toast.success(
-        "ATS analysis completed 🚀"
-      );
-
+      toast.success("ATS analysis complete");
     } catch (err) {
-
       console.error(err);
-
-      toast.error(
-        "ATS check failed"
-      );
-
+      toast.error("ATS check failed");
     } finally {
-
       setLoading(false);
     }
   };
 
+  const handleDrop = (e) => {
+    e.preventDefault(); setDragOver(false);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped?.type === "application/pdf") setFile(dropped);
+    else toast.error("Please upload a PDF");
+  };
+
+  const scoreColor = (s) => {
+    if (s >= 75) return "var(--emerald)";
+    if (s >= 50) return "var(--gold)";
+    return "var(--red)";
+  };
+
   return (
+    <>
+      <style>{appStyles}</style>
+      <div className="pw-app">
+        <div className="orb orb-1" /><div className="orb orb-2" />
 
-    <div className="min-h-screen bg-slate-950 text-white px-6 py-10">
-
-      {/* Header */}
-      <div className="max-w-6xl mx-auto mb-10">
-
-        <h1 className="text-5xl font-bold mb-3">
-          ATS Resume Analyzer
-        </h1>
-
-        <p className="text-slate-400 text-lg">
-          Upload your resume and compare it against job descriptions using AI-powered ATS evaluation.
-        </p>
-
-      </div>
-
-      {/* Main Layout */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-        {/* LEFT PANEL */}
-        <div className="bg-slate-900 border border-slate-800 rounded-[32px] p-8 shadow-2xl">
-
-          <h2 className="text-2xl font-bold mb-6">
-            Upload Resume
-          </h2>
-
-          {/* Upload Box */}
-          <label className="w-full flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-indigo-400 transition-all duration-300 rounded-3xl p-10 cursor-pointer bg-slate-950/50 mb-6">
-
-            <div className="text-5xl mb-4">
-              📂
+        {/* TOPNAV */}
+        <nav className="pw-topnav">
+          <div className="pw-topnav-left">
+            <span className="pw-topnav-logo" style={{ cursor: "pointer" }} onClick={() => navigate("/dashboard")}>Prep<em>Wise</em></span>
+            <div className="pw-topnav-links">
+              <button className="pw-topnav-link" onClick={() => navigate("/dashboard")}>Dashboard</button>
+              <button className="pw-topnav-link active" onClick={() => navigate("/ats")}>ATS</button>
+              <button className="pw-topnav-link" onClick={() => navigate("/interview")}>Interview</button>
+              <button className="pw-topnav-link" onClick={() => navigate("/results")}>Results</button>
             </div>
+          </div>
+        </nav>
 
-            <p className="text-lg font-medium mb-2">
-              Click to upload PDF
-            </p>
+        <div className="pw-page">
 
-            <p className="text-slate-400 text-sm">
-              PDF resumes only
-            </p>
+          {/* HEADER */}
+          <div className="pw-page-header">
+            <div className="pw-page-label">ATS Analyzer</div>
+            <h1 className="pw-page-title">Resume <em>Intelligence.</em></h1>
+            <p className="pw-page-sub">Upload your resume and a job description — our AI scores your ATS compatibility and surfaces what's missing.</p>
+          </div>
 
-            <input
-              type="file"
-              accept=".pdf"
-              className="hidden"
-              onChange={(e) =>
-                setFile(
-                  e.target.files[0]
-                )
-              }
-            />
+          {/* MAIN GRID */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
 
-          </label>
+            {/* LEFT — Input */}
+            <div className="pw-card" style={{ padding: "32px 36px", display: "flex", flexDirection: "column", gap: 0 }}>
 
-          {/* File Name */}
-          {file && (
+              {/* Upload */}
+              <div className="pw-field">
+                <label className="pw-field-label">Resume (PDF)</label>
+                <label
+                  className="pw-upload-box"
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  style={dragOver ? { borderColor: "var(--accent)", background: "var(--accent-soft)" } : {}}
+                >
+                  <div className="pw-upload-icon">
+                    {file ? "📄" : <FiUpload style={{ fontSize: "1.8rem", color: "var(--muted)" }} />}
+                  </div>
+                  <div className="pw-upload-title">{file ? file.name : "Drop your PDF here"}</div>
+                  <div className="pw-upload-hint">{file ? "Click to replace" : "or click to browse"}</div>
+                  <input type="file" accept=".pdf" style={{ display: "none" }} onChange={(e) => setFile(e.target.files[0])} />
+                </label>
+              </div>
 
-            <div className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-2xl px-4 py-3 mb-6">
-
-              Selected:
-              {" "}
-              <span className="font-semibold">
-                {file.name}
-              </span>
-
-            </div>
-
-          )}
-
-          {/* Job Description */}
-          <textarea
-            rows="8"
-            placeholder="Paste job description here..."
-            value={jobDescription}
-            onChange={(e) =>
-              setJobDescription(
-                e.target.value
-              )
-            }
-            className="w-full bg-slate-950 border border-slate-700 rounded-3xl p-5 text-white outline-none focus:border-indigo-400 resize-none"
-          />
-
-          {/* Button */}
-          <button
-            onClick={handleCheckATS}
-            disabled={loading}
-            className="w-full mt-6 bg-indigo-500 hover:bg-indigo-400 disabled:bg-slate-700 transition-all duration-300 py-4 rounded-2xl font-semibold shadow-lg shadow-indigo-500/20"
-          >
-
-            {loading
-              ? "Analyzing..."
-              : "Analyze Resume"}
-
-          </button>
-
-        </div>
-
-        {/* RIGHT PANEL */}
-        <div className="bg-slate-900 border border-slate-800 rounded-[32px] p-8 shadow-2xl">
-
-          <h2 className="text-2xl font-bold mb-6">
-            Results:
-          </h2>
-
-          {!result ? (
-
-            <div className="h-full flex items-center justify-center text-slate-500 text-lg text-center">
-
-              Upload your resume and run analysis to view ATS insights.
-
-            </div>
-
-          ) : (
-
-            <div>
-
-              {/* Score */}
-              <div className="text-center mb-8">
-
-                <div className="w-40 h-40 rounded-full border-[10px] border-indigo-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-indigo-500/20">
-
-                  <span className="text-5xl font-bold">
-                    {result.atsScore}%
+              {/* File pill */}
+              {file && (
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  background: "var(--accent-soft)", border: "1px solid rgba(91,110,245,0.25)",
+                  borderRadius: 10, padding: "10px 16px", marginBottom: 18,
+                }}>
+                  <span style={{ fontSize: "0.85rem", color: "#A5B4FC" }}>
+                    <FiCheck size={13} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                    {file.name}
                   </span>
-
+                  <FiX size={15} style={{ color: "var(--muted)", cursor: "pointer" }} onClick={() => setFile(null)} />
                 </div>
+              )}
 
-                <p className="text-slate-400">
-                  ATS Compatibility Score
-                </p>
-
+              {/* JD */}
+              <div className="pw-field" style={{ flex: 1 }}>
+                <label className="pw-field-label">Job Description</label>
+                <textarea
+                  className="pw-textarea"
+                  rows={10}
+                  placeholder="Paste the full job description here — the more detail, the better the analysis…"
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                />
               </div>
 
-              {/* Matched */}
-              <div className="mb-6">
-
-                <h3 className="text-xl font-semibold text-emerald-300 mb-4">
-
-                  Matched Keywords
-
-                </h3>
-
-                <div className="flex flex-wrap gap-3">
-
-                  {result.matchedKeywords?.map(
-                    (k, i) => (
-
-                      <span
-                        key={i}
-                        className="bg-emerald-500/20 text-emerald-300 px-4 py-2 rounded-full text-sm"
-                      >
-                        {k}
-                      </span>
-                    )
-                  )}
-
-                </div>
-
-              </div>
-
-              {/* Missing */}
-              <div className="mb-6">
-
-                <h3 className="text-xl font-semibold text-red-300 mb-4">
-
-                  Missing Keywords
-
-                </h3>
-
-                <div className="flex flex-wrap gap-3">
-
-                  {result.missingKeywords?.map(
-                    (k, i) => (
-
-                      <span
-                        key={i}
-                        className="bg-red-500/20 text-red-300 px-4 py-2 rounded-full text-sm"
-                      >
-                        {k}
-                      </span>
-                    )
-                  )}
-
-                </div>
-
-              </div>
-
-              {/* Feedback */}
-              <div>
-
-                <h3 className="text-xl font-semibold mb-4">
-
-                  AI Feedback
-
-                </h3>
-
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 text-slate-300 leading-relaxed">
-
-                  {result.feedback}
-
-                </div>
-
-              </div>
-
+              {/* Submit */}
+              <button
+                className="pw-btn pw-btn-primary pw-btn-full pw-btn-lg"
+                style={{ marginTop: 8 }}
+                onClick={handleCheckATS}
+                disabled={loading || !file || !jobDescription.trim()}
+              >
+                {loading ? "Analyzing…" : <>Analyze Resume <FiArrowRight /></>}
+              </button>
             </div>
 
-          )}
+            {/* RIGHT — Results */}
+            <div className="pw-card" style={{ padding: "32px 36px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+                <div className="pw-card-title">Analysis Results</div>
+                {result && <span className="pw-badge pw-badge-emerald"><FiCheck size={11} /> Complete</span>}
+              </div>
 
+              {!result ? (
+                <div className="pw-empty">
+                  <div className="pw-empty-icon">📊</div>
+                  <div className="pw-empty-title">No analysis yet</div>
+                  <div className="pw-empty-text">Upload your resume and paste a job description, then hit Analyze.</div>
+                </div>
+              ) : (
+                <div style={{ animation: "fade-in 0.4s ease" }}>
+
+                  {/* Score */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 32, padding: "20px 24px", background: "var(--surface-2)", borderRadius: 16, border: "1px solid var(--border)" }}>
+                    <div style={{
+                      width: 90, height: 90, borderRadius: "50%", flexShrink: 0,
+                      border: `5px solid ${scoreColor(result.atsScore)}`,
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                      boxShadow: `0 0 24px ${scoreColor(result.atsScore)}40`,
+                    }}>
+                      <span style={{ fontFamily: "var(--serif)", fontSize: "1.8rem", lineHeight: 1, color: "var(--text)" }}>{result.atsScore}%</span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-2)", marginBottom: 6 }}>ATS Compatibility Score</div>
+                      <div style={{ fontFamily: "var(--serif)", fontSize: "1.5rem", color: scoreColor(result.atsScore) }}>
+                        {result.atsScore >= 75 ? "Strong match" : result.atsScore >= 50 ? "Moderate match" : "Needs work"}
+                      </div>
+                      <div style={{ fontSize: "0.82rem", color: "var(--muted)", marginTop: 4 }}>
+                        {result.matchedKeywords?.length || 0} matched · {result.missingKeywords?.length || 0} missing
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Matched Keywords */}
+                  <div style={{ marginBottom: 24 }}>
+                    <div className="pw-field-label" style={{ marginBottom: 12 }}>
+                      <FiCheck size={11} style={{ marginRight: 5, color: "var(--emerald)", verticalAlign: "middle" }} />
+                      Matched Keywords
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {result.matchedKeywords?.map((k, i) => (
+                        <span key={i} className="pw-chip pw-chip-match">{k}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Missing Keywords */}
+                  <div style={{ marginBottom: 24 }}>
+                    <div className="pw-field-label" style={{ marginBottom: 12 }}>
+                      <FiX size={11} style={{ marginRight: 5, color: "var(--red)", verticalAlign: "middle" }} />
+                      Missing Keywords
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {result.missingKeywords?.map((k, i) => (
+                        <span key={i} className="pw-chip pw-chip-miss">{k}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <hr className="pw-divider" />
+
+                  {/* AI Feedback */}
+                  <div>
+                    <div className="pw-field-label" style={{ marginBottom: 12 }}>AI Feedback</div>
+                    <div style={{
+                      background: "var(--surface-2)", border: "1px solid var(--border)",
+                      borderRadius: 14, padding: "18px 20px",
+                      color: "var(--muted-2)", fontSize: "0.9rem", lineHeight: 1.7,
+                    }}>
+                      {result.feedback}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+
+          </div>
         </div>
-
       </div>
-
-    </div>
+    </>
   );
 }
 

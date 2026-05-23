@@ -1,362 +1,191 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  FiFileText,
-  FiBarChart2,
-  FiTrendingUp,
-  FiActivity
-} from "react-icons/fi";
+import { useNavigate, NavLink } from "react-router-dom";
+import { FiFileText, FiBarChart2, FiTrendingUp, FiActivity, FiArrowRight, FiMic } from "react-icons/fi";
+import { appStyles } from "./appStyles";
 
 export default function Dashboard() {
-
   const navigate = useNavigate();
-
   const [analytics, setAnalytics] = useState(null);
   const [user, setUser] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useEffect(() => { fetchDashboardData(); }, []);
 
   const fetchDashboardData = async () => {
     try {
-
       const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
 
-      // 📊 ATS analytics
-      const analyticsResponse = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/analytics/ats`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const [analyticsRes, resultsRes, profileRes] = await Promise.all([
+        fetch(`${process.env.REACT_APP_API_URL}/api/analytics/ats`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/mock-interview/results`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/auth/profile`, { headers }),
+      ]);
 
-      const analyticsData =
-        await analyticsResponse.json();
+      const [analyticsData, resultsData, profileData] = await Promise.all([
+        analyticsRes.json(), resultsRes.json(), profileRes.json(),
+      ]);
 
-      // 🎙️ Interview summary
-      const resultsResponse = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/mock-interview/results`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      const resultsData =
-        await resultsResponse.json();
-
-      // 👤 User profile
-      const profileResponse = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/auth/profile`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      const profileData =
-        await profileResponse.json();
       setAnalytics(analyticsData);
       setSummary(resultsData.summary || null);
       setUser(profileData);
-
     } catch (error) {
-
-      console.error(
-        "Dashboard fetch error:",
-        error
-      );
-
+      console.error("Dashboard fetch error:", error);
     } finally {
-
       setLoading(false);
     }
   };
 
+  const firstName = user?.user?.name?.split(" ")[0] || "there";
+
   const stats = [
-    {
-      title: "Latest ATS Score",
-      value: analytics?.latestScore || "N/A",
-      icon: <FiFileText />
-    },
-    {
-      title: "ATS Checks",
-      value: analytics?.totalChecks || 0,
-      icon: <FiBarChart2 />
-    },
-    {
-      title: "Readiness Level",
-      value: summary?.readinessLevel || "N/A",
-      icon: <FiTrendingUp />
-    },
-    {
-      title: "Avg Confidence",
-      value: summary
-        ? `${summary.avgConfidence}/10`
-        : "N/A",
-      icon: <FiActivity />
-    }
+    { title: "Latest ATS Score", value: analytics?.latestScore ?? "—", icon: <FiFileText />, delay: "0s" },
+    { title: "ATS Checks Run", value: analytics?.totalChecks ?? 0, icon: <FiBarChart2 />, delay: "0.07s" },
+    { title: "Readiness Level", value: summary?.readinessLevel ?? "—", icon: <FiTrendingUp />, delay: "0.14s" },
+    { title: "Avg Confidence", value: summary ? `${summary.avgConfidence}/10` : "—", icon: <FiActivity />, delay: "0.21s" },
   ];
 
   const actions = [
-    {
-      title: "ATS Checker",
-      description:
-        "Analyze your resume against job descriptions.",
-      button: "Open ATS"
-    },
-    {
-      title: "Mock Interview",
-      description:
-        "Practice AI-powered technical interviews.",
-      button: "Start Interview"
-    },
-    {
-      title: "Interview Results",
-      description:
-        "Review previous interview performance.",
-      button: "View Results"
-    }
+    { title: "ATS Checker", desc: "Score your resume against any job description.", route: "/ats", icon: <FiFileText />, label: "Open ATS" },
+    { title: "Mock Interview", desc: "Practice with live AI-driven question evaluation.", route: "/interview", icon: <FiMic />, label: "Start Interview" },
+    { title: "Interview Results", desc: "Review your past scores and AI feedback.", route: "/results", icon: <FiBarChart2 />, label: "View Results" },
+  ];
+
+  const bars = [
+    { label: "Readiness Score", val: summary?.readinessScore || 0, color: "var(--accent)", textColor: "#A5B4FC" },
+    { label: "Communication Clarity", val: (summary?.avgClarity || 0) * 10, color: "var(--cyan)", textColor: "var(--cyan)" },
+    { label: "Technical Confidence", val: (summary?.avgConfidence || 0) * 10, color: "var(--emerald)", textColor: "var(--emerald)" },
   ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center text-2xl font-semibold">
-        Loading...
-      </div>
+      <>
+        <style>{appStyles}</style>
+        <div className="pw-loading">
+          <div className="pw-loading-spinner" />
+          <div className="pw-loading-text">Loading your dashboard…</div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-8">
+    <>
+      <style>{appStyles}</style>
+      <div className="pw-app">
+        <div className="orb orb-1" /><div className="orb orb-2" />
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
-
-        <div>
-          <h1 className="text-4xl font-bold mb-2">
-            Welcome back, {user?.user?.name || "User"}!
-          </h1>
-
-          <p className="text-slate-400 text-lg">
-            Track your ATS performance and prepare smarter interviews.
-          </p>
-        </div>
-
-        <button className="bg-indigo-500 hover:bg-indigo-400 transition-all duration-300 px-6 py-3 rounded-2xl font-semibold shadow-lg shadow-indigo-500/20">
-          Upgrade Readiness
-        </button>
-
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-
-        {stats.map((item, index) => (
-
-          <div
-            key={index}
-            className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl hover:scale-[1.02] transition-all duration-300"
-          >
-
-            <div className="text-3xl mb-4 text-indigo-400">
-                {item.icon}
+        {/* TOPNAV */}
+        <nav className="pw-topnav">
+          <div className="pw-topnav-left">
+            <span className="pw-topnav-logo">Prep<em>Wise</em></span>
+            <div className="pw-topnav-links">
+              <button className="pw-topnav-link active" onClick={() => navigate("/dashboard")}>Dashboard</button>
+              <button className="pw-topnav-link" onClick={() => navigate("/ats")}>ATS</button>
+              <button className="pw-topnav-link" onClick={() => navigate("/interview")}>Interview</button>
+              <button className="pw-topnav-link" onClick={() => navigate("/results")}>Results</button>
             </div>
+          </div>
+          <div className="pw-topnav-right">
+            <div className="pw-topnav-avatar">{firstName[0]?.toUpperCase()}</div>
+          </div>
+        </nav>
 
-            <p className="text-slate-400 text-sm mb-1">
-              {item.title}
-            </p>
+        <div className="pw-page">
 
-            <h2 className="text-3xl font-bold">
-              {item.value}
-            </h2>
-
+          {/* HEADER */}
+          <div className="pw-page-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div>
+              <div className="pw-page-label">Dashboard</div>
+              <h1 className="pw-page-title">Good to see you, <em>{firstName}.</em></h1>
+              <p className="pw-page-sub">Here's how your preparation is shaping up.</p>
+            </div>
+            <button className="pw-btn pw-btn-primary" style={{ marginTop: 8 }} onClick={() => navigate("/interview")}>
+              Start Interview <FiArrowRight />
+            </button>
           </div>
 
-        ))}
-
-      </div>
-
-      {/* Main Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-        {/* Left */}
-        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl">
-
-          <div className="flex items-center justify-between mb-8">
-
-            <div>
-              <h2 className="text-2xl font-bold mb-1">
-                AI Interview Insights
-              </h2>
-
-              <p className="text-slate-400">
-                Your interview preparation summary.
-              </p>
-            </div>
-
-            <div className="bg-indigo-500/20 text-indigo-300 px-4 py-2 rounded-xl text-sm font-semibold">
-              Updated Today
-            </div>
-
-          </div>
-
-          <div className="space-y-6">
-
-            {/* Readiness */}
-            <div>
-
-              <div className="flex justify-between mb-2">
-                <span className="text-slate-300">
-                  Readiness Score
-                </span>
-
-                <span className="font-bold text-indigo-300">
-                  {summary?.readinessScore || 0}%
-                </span>
+          {/* STATS */}
+          <div className="pw-grid-4" style={{ marginBottom: 32 }}>
+            {stats.map((s, i) => (
+              <div key={i} className="pw-stat-card" style={{ animationDelay: s.delay }}>
+                <div className="pw-stat-icon">{s.icon}</div>
+                <div className="pw-stat-label">{s.title}</div>
+                <div className="pw-stat-value">{s.value}</div>
               </div>
-
-              <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden">
-
-                <div
-                  className="h-full bg-indigo-500 rounded-full"
-                  style={{
-                    width: `${summary?.readinessScore || 0}%`
-                  }}
-                ></div>
-
-              </div>
-
-            </div>
-
-            {/* Clarity */}
-            <div>
-
-              <div className="flex justify-between mb-2">
-
-                <span className="text-slate-300">
-                  Communication Clarity
-                </span>
-
-                <span className="font-bold text-cyan-300">
-                  {summary
-                    ? `${summary.avgClarity * 10}%`
-                    : "0%"}
-                </span>
-
-              </div>
-
-              <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden">
-
-                <div
-                  className="h-full bg-cyan-500 rounded-full"
-                  style={{
-                    width: `${summary?.avgClarity * 10 || 0}%`
-                  }}
-                ></div>
-
-              </div>
-
-            </div>
-
-            {/* Confidence */}
-            <div>
-
-              <div className="flex justify-between mb-2">
-
-                <span className="text-slate-300">
-                  Technical Confidence
-                </span>
-
-                <span className="font-bold text-emerald-300">
-                  {summary
-                    ? `${summary.avgConfidence * 10}%`
-                    : "0%"}
-                </span>
-
-              </div>
-
-              <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden">
-
-                <div
-                  className="h-full bg-emerald-500 rounded-full"
-                  style={{
-                    width: `${summary?.avgConfidence * 10 || 0}%`
-                  }}
-                ></div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-        {/* Right */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-xl">
-
-          <h2 className="text-2xl font-bold mb-6">
-            Quick Actions:
-          </h2>
-
-          <div className="space-y-5">
-
-            {actions.map((item, index) => (
-
-              <div
-                key={index}
-                className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5"
-              >
-
-                <h3 className="text-lg font-semibold mb-2">
-                  {item.title}
-                </h3>
-
-                <p className="text-slate-400 text-sm mb-4">
-                  {item.description}
-                </p>
-
-                <button
-                  onClick={() => {
-
-                    if (item.title === "ATS Checker") {
-                      navigate("/ats");
-                    }
-
-                    else if (
-                      item.title === "Mock Interview"
-                    ) {
-                      navigate("/interview");
-                    }
-
-                    else {
-                      navigate("/results");
-                    }
-
-                  }}
-                  className="w-full bg-indigo-500 hover:bg-indigo-400 transition-all duration-300 py-2 rounded-xl font-medium"
-                >
-                  {item.button}
-                </button>
-
-              </div>
-
             ))}
-
           </div>
 
+          {/* MAIN GRID */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20 }}>
+
+            {/* LEFT — Insights */}
+            <div className="pw-card" style={{ padding: "36px 40px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+                <div>
+                  <div className="pw-card-title">AI Interview Insights</div>
+                  <div className="pw-card-sub">Your preparation summary across all sessions.</div>
+                </div>
+                <span className="pw-badge pw-badge-accent">Updated today</span>
+              </div>
+
+              {bars.map((b, i) => (
+                <div key={i} className="pw-progress-row">
+                  <div className="pw-progress-header">
+                    <span className="pw-progress-name">{b.label}</span>
+                    <span className="pw-progress-val" style={{ color: b.textColor }}>{b.val.toFixed(0)}%</span>
+                  </div>
+                  <div className="pw-progress-track">
+                    <div className="pw-progress-fill" style={{ width: `${b.val}%`, background: b.color }} />
+                  </div>
+                </div>
+              ))}
+
+              {/* ATS block */}
+              <hr className="pw-divider" />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--muted-2)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Average ATS Score</div>
+                  <div style={{ fontFamily: "var(--serif)", fontSize: "2rem", background: "linear-gradient(135deg, var(--text) 40%, var(--accent) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                    {analytics?.avgScore ? `${analytics.avgScore}%` : "—"}
+                  </div>
+                </div>
+                <button className="pw-btn pw-btn-ghost" onClick={() => navigate("/ats")}>Run Analysis <FiArrowRight size={14} /></button>
+              </div>
+            </div>
+
+            {/* RIGHT — Quick Actions */}
+            <div className="pw-card" style={{ padding: "28px 24px" }}>
+              <div className="pw-card-title" style={{ marginBottom: 20 }}>Quick Actions</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {actions.map((a, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: "var(--surface-2)", border: "1px solid var(--border)",
+                      borderRadius: 14, padding: "18px 20px",
+                      transition: "border-color 0.2s", cursor: "default",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = "var(--border-bright)"}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)", fontSize: "0.85rem" }}>{a.icon}</div>
+                      <span style={{ fontWeight: 500, fontSize: "0.92rem" }}>{a.title}</span>
+                    </div>
+                    <p style={{ fontSize: "0.82rem", color: "var(--muted-2)", marginBottom: 14, lineHeight: 1.5 }}>{a.desc}</p>
+                    <button className="pw-btn pw-btn-primary pw-btn-full" style={{ padding: "9px 16px", fontSize: "0.85rem" }} onClick={() => navigate(a.route)}>
+                      {a.label} <FiArrowRight size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
         </div>
-
       </div>
-
-    </div>
+    </>
   );
 }

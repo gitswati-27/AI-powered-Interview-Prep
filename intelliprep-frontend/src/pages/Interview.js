@@ -1,449 +1,252 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { FiMic, FiSquare, FiArrowRight, FiChevronRight } from "react-icons/fi";
+import { appStyles } from "./appStyles";
 
 function Interview() {
-
+  const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState(null);
-
   const [interviewId, setInterviewId] = useState(null);
-
+  const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
 
-  // 🚀 Start interview when page loads
-  useEffect(() => {
-    startInterview();
-  }, []);
+  useEffect(() => { startInterview(); }, []);
 
-  // 🎯 Start interview session + generate questions
   const startInterview = async () => {
-
     try {
+      const token = localStorage.getItem("token");
+      const headers = (extra = {}) => ({ "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...extra });
 
-      const token =
-        localStorage.getItem("token");
+      const interviewRes = await fetch(`${process.env.REACT_APP_API_URL}/api/mock-interview/start`, {
+        method: "POST", headers: headers(), body: null,
+      });
+      const interviewData = await interviewRes.json();
+      setInterviewId(interviewData.interviewId);
 
-      // 1️⃣ Create interview session
-      const interviewResponse = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/mock-interview/start`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-
-            Authorization:
-              `Bearer ${token}`
-          },
-
-          body: null
-        }
-      );
-
-      const interviewData =
-        await interviewResponse.json();
-
-      setInterviewId(
-        interviewData.interviewId
-      );
-
-      // 2️⃣ Generate questions
-      const questionResponse = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/questions/generate`,
-        {
-          method: "POST",
-
-          headers: {
-            Authorization:
-              `Bearer ${token}`
-          }
-        }
-      );
-
-      const questionData =
-        await questionResponse.json();
-
+      const questionRes = await fetch(`${process.env.REACT_APP_API_URL}/api/questions/generate`, {
+        method: "POST", headers: headers(),
+      });
+      const questionData = await questionRes.json();
       console.log(questionData);
-
-      setQuestions(
-        questionData.questions || []
-      );
-
+      setQuestions(questionData.questions || []);
     } catch (err) {
-
-      console.error(
-        "Interview start failed:",
-        err
-      );
-
-      toast.error(
-        "Failed to start interview"
-      );
+      console.error("Interview start failed:", err);
+      toast.error("Failed to start interview");
     }
   };
 
-  // 🎙️ ORIGINAL WORKING SPEECH LOGIC
   const startSpeech = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { toast.error("Speech recognition not supported"); return; }
 
-    const SpeechRecognition =
-      window.SpeechRecognition ||
-      window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-
-      toast.error(
-        "Speech recognition not supported"
-      );
-
-      return;
-    }
-
-    const recognition =
-      new SpeechRecognition();
-
+    const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
-
     recognition.continuous = true;
-
     recognition.interimResults = true;
 
     let finalTranscript = "";
-
     recognition.onresult = (event) => {
-
       let interimTranscript = "";
-
-      for (
-        let i = event.resultIndex;
-        i < event.results.length;
-        i++
-      ) {
-
-        const transcript =
-          event.results[i][0].transcript;
-
-        if (event.results[i].isFinal) {
-
-          finalTranscript +=
-            transcript + " ";
-
-        } else {
-
-          interimTranscript += transcript;
-        }
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalTranscript += transcript + " ";
+        else interimTranscript += transcript;
       }
-
-      // ✅ LIVE UPDATE WHILE SPEAKING
-      setAnswer(
-        finalTranscript +
-        interimTranscript
-      );
+      setAnswer(finalTranscript + interimTranscript);
     };
 
+    recognition.onend = () => setListening(false);
     recognition.start();
-
-    recognitionRef.current =
-      recognition;
-
-    toast.success(
-      "Listening started 🎙️"
-    );
+    recognitionRef.current = recognition;
+    setListening(true);
+    toast.success("Listening…");
   };
 
-  // ⏹️ Stop speech recognition
   const stopSpeech = () => {
-
-    if (recognitionRef.current) {
-
-      recognitionRef.current.stop();
-
-      toast.success(
-        "Listening stopped"
-      );
-    }
+    if (recognitionRef.current) { recognitionRef.current.stop(); setListening(false); }
   };
 
-  // 📤 Submit answer
   const submitAnswer = async () => {
-
     try {
-
-      const token =
-        localStorage.getItem("token");
-
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/mock-interview/answer`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-
-            Authorization:
-              `Bearer ${token}`
-          },
-
-          body: JSON.stringify({
-            interviewId,
-            question:
-              questions[currentIndex],
-            answer
-          })
-        }
-      );
-
-      const data =
-        await response.json();
-
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/mock-interview/answer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ interviewId, question: questions[currentIndex], answer }),
+      });
+      const data = await response.json();
       setResult(data);
-
-      toast.success(
-        "Answer evaluated 🚀"
-      );
-
+      toast.success("Answer evaluated");
     } catch (err) {
-
-      console.error(
-        "Answer submission failed:",
-        err
-      );
-
-      toast.error(
-        "Submission failed"
-      );
+      console.error("Answer submission failed:", err);
+      toast.error("Submission failed");
     }
   };
 
-  // ⏭️ Next question
   const nextQuestion = () => {
-
-    setAnswer("");
-
-    setResult(null);
-
-    if (
-      currentIndex <
-      questions.length - 1
-    ) {
-
-      setCurrentIndex(
-        currentIndex + 1
-      );
-
+    setAnswer(""); setResult(null);
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
     } else {
-
-      toast.success(
-        "Interview completed!"
-      );
-      //navigate("/dashboard");
+      toast.success("Interview complete!");
     }
   };
+
+  const scoreCards = result ? [
+    { label: "Correctness", value: result.correctness, color: "var(--accent)", soft: "var(--accent-soft)" },
+    { label: "Clarity", value: result.clarity, color: "var(--cyan)", soft: "var(--cyan-soft)" },
+    { label: "Confidence", value: result.confidence, color: "var(--emerald)", soft: "var(--emerald-soft)" },
+  ] : [];
 
   return (
+    <>
+      <style>{appStyles}</style>
+      <div className="pw-app">
+        <div className="orb orb-1" /><div className="orb orb-2" />
 
-    <div className="min-h-screen bg-slate-950 text-white px-6 py-10">
+        {/* TOPNAV */}
+        <nav className="pw-topnav">
+          <div className="pw-topnav-left">
+            <span className="pw-topnav-logo" style={{ cursor: "pointer" }} onClick={() => navigate("/dashboard")}>Prep<em>Wise</em></span>
+            <div className="pw-topnav-links">
+              <button className="pw-topnav-link" onClick={() => navigate("/dashboard")}>Dashboard</button>
+              <button className="pw-topnav-link" onClick={() => navigate("/ats")}>ATS</button>
+              <button className="pw-topnav-link active" onClick={() => navigate("/interview")}>Interview</button>
+              <button className="pw-topnav-link" onClick={() => navigate("/results")}>Results</button>
+            </div>
+          </div>
+        </nav>
 
-      {/* Header */}
-      <div className="max-w-5xl mx-auto mb-10">
+        <div className="pw-page" style={{ maxWidth: 900 }}>
 
-        <h1 className="text-5xl font-bold mb-3">
-          Mock Interview
-        </h1>
-
-        <p className="text-slate-400 text-lg">
-          Practice technical interviews with AI-powered evaluation and speech analysis.
-        </p>
-
-      </div>
-
-      {/* Main Card */}
-      <div className="max-w-5xl mx-auto bg-slate-900 border border-slate-800 rounded-[32px] p-8 shadow-2xl">
-
-        {questions.length === 0 ? (
-
-          <div className="text-center text-slate-400 text-xl py-20">
-
-            Generating questions...
-
+          {/* HEADER */}
+          <div className="pw-page-header">
+            <div className="pw-page-label">Mock Interview</div>
+            <h1 className="pw-page-title">Think out <em>loud.</em></h1>
+            <p className="pw-page-sub">AI-evaluated answers with real-time speech recognition. Take your time — quality beats speed.</p>
           </div>
 
-        ) : (
+          {questions.length === 0 ? (
+            <div className="pw-card">
+              <div className="pw-empty">
+                <div className="pw-loading-spinner" />
+                <div className="pw-empty-title" style={{ marginTop: 20 }}>Generating your questions…</div>
+                <div className="pw-empty-text">Hang tight, this usually takes a few seconds.</div>
+              </div>
+            </div>
+          ) : (
+            <div>
 
-          <div>
-
-            {/* Top */}
-            <div className="flex items-center justify-between mb-8">
-
-              <h2 className="text-3xl font-bold">
-
-                Question {currentIndex + 1}
-
-              </h2>
-
-              <div className="bg-indigo-500/20 text-indigo-300 px-5 py-2 rounded-2xl font-semibold">
-
-                {currentIndex + 1}
-                {" / "}
-                {questions.length}
-
+              {/* PROGRESS */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+                {questions.map((_, i) => (
+                  <div key={i} style={{
+                    flex: 1, height: 4, borderRadius: 999,
+                    background: i < currentIndex ? "var(--accent)" : i === currentIndex ? "var(--accent)" : "var(--surface-3)",
+                    opacity: i === currentIndex ? 1 : i < currentIndex ? 0.6 : 0.3,
+                    transition: "background 0.3s",
+                  }} />
+                ))}
+                <span style={{ fontSize: "0.8rem", color: "var(--muted-2)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  {currentIndex + 1} / {questions.length}
+                </span>
               </div>
 
-            </div>
-
-            {/* Question */}
-            <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 mb-8">
-
-              <p className="text-xl leading-relaxed font-medium">
-
-                {questions[currentIndex]}
-
-              </p>
-
-            </div>
-
-            {/* Buttons */}
-            <div className="flex gap-4 mb-6">
-
-              <button
-                onClick={startSpeech}
-                className="bg-indigo-500 hover:bg-indigo-400 transition-all duration-300 px-6 py-3 rounded-2xl font-semibold shadow-lg shadow-indigo-500/20"
-              >
-                Start
-              </button>
-
-              <button
-                onClick={stopSpeech}
-                className="bg-red-500 hover:bg-red-400 transition-all duration-300 px-6 py-3 rounded-2xl font-semibold"
-              >
-                Stop
-              </button>
-
-            </div>
-
-            {/* Textarea */}
-            <textarea
-              rows="8"
-              value={answer}
-              onChange={(e) =>
-                setAnswer(e.target.value)
-              }
-              placeholder="Your answer..."
-              className="w-full bg-slate-950 border border-slate-700 rounded-3xl p-5 text-white outline-none focus:border-indigo-400 resize-none mb-6"
-            />
-
-            {/* Submit */}
-            <button
-              onClick={submitAnswer}
-              className="w-full bg-indigo-500 hover:bg-indigo-400 transition-all duration-300 py-4 rounded-2xl font-semibold shadow-lg shadow-indigo-500/20"
-            >
-              Submit Answer
-            </button>
-
-            {/* 📊 Evaluation */}
-            {result && (
-
-              <div className="mt-10">
-
-                <h3 className="text-3xl font-bold mb-6">
-
-                  Evaluation
-
-                </h3>
-
-                {/* Score Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-
-                  <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 text-center">
-
-                    <h4 className="text-slate-400 mb-3">
-
-                      Correctness
-
-                    </h4>
-
-                    <p className="text-5xl font-bold text-indigo-300">
-
-                      {result.correctness}/10
-
-                    </p>
-
-                  </div>
-
-                  <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 text-center">
-
-                    <h4 className="text-slate-400 mb-3">
-
-                      Clarity
-
-                    </h4>
-
-                    <p className="text-5xl font-bold text-cyan-300">
-
-                      {result.clarity}/10
-
-                    </p>
-
-                  </div>
-
-                  <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 text-center">
-
-                    <h4 className="text-slate-400 mb-3">
-
-                      Confidence
-
-                    </h4>
-
-                    <p className="text-5xl font-bold text-emerald-300">
-
-                      {result.confidence}/10
-
-                    </p>
-
-                  </div>
-
+              {/* QUESTION CARD */}
+              <div className="pw-card" style={{ padding: "32px 36px", marginBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                  <span className="pw-badge pw-badge-accent">Question {currentIndex + 1}</span>
+                  {listening && (
+                    <span className="pw-badge pw-badge-red" style={{ animation: "fade-in 0.2s ease" }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--red)", display: "inline-block", animation: "pulse-dot 1.2s infinite" }} />
+                      Listening
+                    </span>
+                  )}
                 </div>
-
-                {/* Feedback */}
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 mb-6">
-
-                  <h4 className="text-2xl font-bold mb-4">
-
-                    Feedback:
-
-                  </h4>
-
-                  <p className="text-slate-300 leading-relaxed">
-
-                    {result.feedback}
-
-                  </p>
-
-                </div>
-
-                {/* Next */}
-                <button
-                  onClick={nextQuestion}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 transition-all duration-300 py-4 rounded-2xl font-semibold"
-                >
-                  Next Question →
-                </button>
-
+                <p style={{ fontSize: "1.15rem", lineHeight: 1.65, fontWeight: 400, color: "var(--text)" }}>
+                  {questions[currentIndex]}
+                </p>
               </div>
 
-            )}
+              {/* ANSWER AREA */}
+              <div className="pw-card" style={{ padding: "28px 36px", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <label className="pw-field-label" style={{ margin: 0 }}>Your Answer</label>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      className="pw-btn pw-btn-primary"
+                      style={{ padding: "8px 18px", fontSize: "0.85rem", gap: 7 }}
+                      onClick={startSpeech}
+                      disabled={listening}
+                    >
+                      <FiMic size={14} /> {listening ? "Listening…" : "Start"}
+                    </button>
+                    <button
+                      className="pw-btn pw-btn-danger"
+                      style={{ padding: "8px 18px", fontSize: "0.85rem" }}
+                      onClick={stopSpeech}
+                      disabled={!listening}
+                    >
+                      <FiSquare size={13} /> Stop
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  className="pw-textarea"
+                  rows={7}
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder="Speak or type your answer here…"
+                />
+              </div>
 
-          </div>
+              <button
+                className="pw-btn pw-btn-primary pw-btn-full pw-btn-lg"
+                onClick={submitAnswer}
+                disabled={!answer.trim()}
+              >
+                Submit Answer <FiArrowRight />
+              </button>
 
-        )}
+              {/* EVALUATION */}
+              {result && (
+                <div style={{ marginTop: 28, animation: "fade-up 0.4s ease" }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <div className="pw-page-label">Evaluation</div>
+                    <div style={{ fontFamily: "var(--serif)", fontSize: "1.5rem", letterSpacing: "-0.01em" }}>Here's how you did.</div>
+                  </div>
 
+                  {/* Score Cards */}
+                  <div className="pw-grid-3" style={{ marginBottom: 20 }}>
+                    {scoreCards.map((s, i) => (
+                      <div key={i} className="pw-score-mini" style={{ border: `1px solid ${s.soft}` }}>
+                        <div className="pw-score-mini-label">{s.label}</div>
+                        <div className="pw-score-mini-val" style={{ color: s.color }}>{s.value}<span style={{ fontSize: "1rem", color: "var(--muted)", fontFamily: "var(--sans)" }}>/10</span></div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Feedback */}
+                  <div className="pw-card" style={{ marginBottom: 16, padding: "24px 28px" }}>
+                    <div className="pw-field-label" style={{ marginBottom: 12 }}>AI Feedback</div>
+                    <p style={{ color: "var(--muted-2)", fontSize: "0.92rem", lineHeight: 1.7 }}>{result.feedback}</p>
+                  </div>
+
+                  <button className="pw-btn pw-btn-success pw-btn-full pw-btn-lg" onClick={nextQuestion}>
+                    {currentIndex < questions.length - 1 ? <>Next Question <FiChevronRight /></> : "Finish Interview"}
+                  </button>
+                </div>
+              )}
+
+            </div>
+          )}
+        </div>
       </div>
-
-    </div>
+    </>
   );
 }
 
