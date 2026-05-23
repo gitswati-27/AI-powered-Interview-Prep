@@ -88,7 +88,7 @@ User → React Frontend → Express Backend → PostgreSQL + Groq AI API
 ## Clone Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/gitswati-27/AI-powered-Interview-Prep.git
 ```
 
 ## Frontend Setup
